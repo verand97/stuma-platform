@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+
+:root {
+  --background: #1E1F22;
+  --foreground: #F3F4F6;
+  
+  --charcoal: #1E1F22;
+  --charcoal-light: #2B2D31;
+  --charcoal-dark: #111214;
+  --neon-purple: #7F56FF;
+  --neon-purple-hover: #6c42f0;
+  --lime-green: #80FF56;
+  --lime-green-light: rgba(128, 255, 86, 0.15);
+  --off-white: #F3F4F6;
+  --grey-muted: #9CA3AF;
+  --border-color: #383A40;
+}
+
+@theme {
+  --color-charcoal: var(--charcoal);
+  --color-charcoal-light: var(--charcoal-light);
+  --color-charcoal-dark: var(--charcoal-dark);
+  --color-neon-purple: var(--neon-purple);
+  --color-neon-purple-hover: var(--neon-purple-hover);
+  --color-lime-green: var(--lime-green);
+  --color-lime-green-light: var(--lime-green-light);
+  --color-off-white: var(--off-white);
+  --color-grey-muted: var(--grey-muted);
+  --color-border-color: var(--border-color);
+  
+  --font-sans: 'Inter', sans-serif;
+  --font-title: 'Plus Jakarta Sans', sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* Custom scrollbars for the premium dark mode look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--charcoal-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--grey-muted);
+}
