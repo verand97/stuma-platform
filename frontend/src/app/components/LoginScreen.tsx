@@ -52,8 +52,24 @@ export default function LoginScreen({ onLogin, onBackToLanding }: LoginScreenPro
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would authenticate and return a role.
-    // Here, we proceed to show the mock role selector.
+    
+    if (authMode === 'login') {
+      // Auto-detect role based on the mock emails
+      if (email === MOCK_USERS.superadmin.email) {
+        onLogin(MOCK_USERS.superadmin);
+        return;
+      }
+      if (email === MOCK_USERS.admin.email) {
+        onLogin(MOCK_USERS.admin);
+        return;
+      }
+      if (email === MOCK_USERS.pelanggan.email) {
+        onLogin(MOCK_USERS.pelanggan);
+        return;
+      }
+    }
+
+    // Fallback to role selector for demo purposes if email is unknown or it's a registration
     setShowRoleSelect(true);
   };
 
