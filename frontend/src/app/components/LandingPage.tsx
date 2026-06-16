@@ -14,7 +14,7 @@ export default function LandingPage({ onNavigateToAuth }: LandingPageProps) {
       <nav className="fixed top-0 w-full z-50 bg-[#1E1F22]/80 backdrop-blur-md border-b border-[#383A40]">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#7F56FF] to-purple-800 flex items-center justify-center font-bold text-white text-xl shadow-[0_0_15px_rgba(127,86,255,0.4)]">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-tr from-[#7F56FF] to-purple-800 flex items-center justify-center font-bold text-white text-xl shadow-[0_0_15px_rgba(127,86,255,0.4)]">
               S
             </div>
             <span className="font-title text-2xl font-bold tracking-tight">STUMA</span>
@@ -46,7 +46,7 @@ export default function LandingPage({ onNavigateToAuth }: LandingPageProps) {
           
           <h1 className="text-5xl md:text-7xl font-title font-extrabold tracking-tight mb-8 leading-tight animate-slideUp" style={{ animationDelay: '100ms' }}>
             Stablecoin Trade for <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#7F56FF] to-[#80FF56]">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-[#7F56FF] to-[#80FF56]">
               UMKM Advancement
             </span>
           </h1>
@@ -96,7 +96,7 @@ export default function LandingPage({ onNavigateToAuth }: LandingPageProps) {
             </div>
 
             <div className="bg-[#1E1F22] border border-[#383A40] p-8 rounded-3xl hover:border-[#80FF56]/50 transition-colors group">
-              <div className="w-14 h-14 bg-gradient-to-br from-[#7F56FF]/20 to-[#80FF56]/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <div className="w-14 h-14 bg-linear-to-br from-[#7F56FF]/20 to-[#80FF56]/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Globe size={28} className="text-off-white" />
               </div>
               <h3 className="text-xl font-bold mb-3">Konversi Real-Time</h3>
@@ -110,7 +110,7 @@ export default function LandingPage({ onNavigateToAuth }: LandingPageProps) {
 
       {/* Footer */}
       <footer className="bg-[#1E1F22] py-12 border-t border-[#383A40] text-center">
-        <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-tr from-[#7F56FF] to-purple-800 flex items-center justify-center font-bold text-white text-xl mb-6">
+        <div className="w-12 h-12 mx-auto rounded-xl bg-linear-to-tr from-[#7F56FF] to-purple-800 flex items-center justify-center font-bold text-white text-xl mb-6">
           S
         </div>
         <p className="text-grey-muted font-medium mb-2">STUMA Platform</p>

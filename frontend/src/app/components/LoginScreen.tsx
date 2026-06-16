@@ -75,7 +75,7 @@ export default function LoginScreen({ onLogin, onBackToLanding }: LoginScreenPro
       {!showRoleSelect ? (
         <div className="relative z-10 w-full max-w-md bg-[#2B2D31] border border-[#383A40] rounded-3xl p-8 shadow-2xl animate-slideUp">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#7F56FF] to-purple-800 flex items-center justify-center font-bold text-white text-2xl shadow-[0_0_15px_rgba(127,86,255,0.4)] mb-4">
+            <div className="w-14 h-14 rounded-2xl bg-linear-to-tr from-[#7F56FF] to-purple-800 flex items-center justify-center font-bold text-white text-2xl shadow-[0_0_15px_rgba(127,86,255,0.4)] mb-4">
               S
             </div>
             <h2 className="font-title text-2xl font-bold">

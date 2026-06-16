@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Wallet, ShoppingBag, CheckCircle, Trash2, X, RefreshCw, Database, Info, ShieldAlert, History, Package, LogOut } from 'lucide-react';
+import { Wallet, ShoppingBag, CheckCircle, Trash2, X, Info, ShieldAlert, History, Package, LogOut } from 'lucide-react';
 import { UserSession } from '../../utils/types';
-import { getProducts, createOrder, triggerBlockchainWebhook, Product, Order, AnomalyLog } from '../../utils/api';
+import { getProducts, createOrder, triggerBlockchainWebhook, Product, Order } from '../../utils/api';
 
 interface Props { user: UserSession; onLogout: () => void; }
 
@@ -25,7 +25,10 @@ export default function CustomerView({ user, onLogout }: Props) {
   });
 
   const refreshProducts = useCallback(async () => { setProducts(await getProducts()); }, []);
-  useEffect(() => { refreshProducts(); }, [refreshProducts]);
+  useEffect(() => {
+    const t = setTimeout(() => { refreshProducts(); }, 0);
+    return () => clearTimeout(t);
+  }, [refreshProducts]);
   useEffect(() => { if (myOrders.length > 0) localStorage.setItem('stuma_customer_orders', JSON.stringify(myOrders)); }, [myOrders]);
 
   const addToCart = (p: Product) => {
@@ -73,74 +76,84 @@ export default function CustomerView({ user, onLogout }: Props) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-charcoal text-off-white font-sans">
+    <div className="flex flex-col min-h-screen bg-[#1E1F22] text-off-white font-sans selection:bg-[#7F56FF] selection:text-white">
       {/* Top bar */}
-      <header className="bg-charcoal-dark border-b border-border-color sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-linear-to-tr from-neon-purple to-purple-800 flex items-center justify-center font-bold text-white text-lg shadow-lg shadow-neon-purple/20">S</div>
+      <header className="bg-[#111214] border-b border-[#383A40] sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-tr from-[#7F56FF] to-purple-800 flex items-center justify-center font-bold text-white text-xl shadow-[0_0_15px_rgba(127,86,255,0.4)]">S</div>
             <div>
-              <h1 className="font-title text-lg font-bold text-off-white flex items-center gap-1.5">STUMA <span className="text-[9px] uppercase bg-neon-purple/20 text-neon-purple border border-neon-purple/30 px-1.5 py-0.5 rounded font-mono">Pelanggan</span></h1>
-              <p className="text-[9px] text-grey-muted">Belanja Produk UMKM dengan USDT</p>
+              <h1 className="font-title text-xl font-bold text-off-white tracking-tight flex items-center gap-2">
+                STUMA 
+                <span className="text-[10px] uppercase bg-[#7F56FF]/20 text-[#7F56FF] border border-[#7F56FF]/30 px-2 py-0.5 rounded-full font-mono font-bold tracking-wider">Pelanggan</span>
+              </h1>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             {/* Wallet info */}
-            <div className="hidden md:flex items-center gap-3 bg-charcoal border border-border-color py-1.5 px-3 rounded-xl text-xs">
-              <span className="text-grey-muted">Saldo:</span>
-              <span className="text-lime-green font-bold font-mono">{walletUsdtBalance.toFixed(2)} USDT</span>
-              <span className="text-grey-muted">|</span>
-              <span className="text-neon-purple font-bold font-mono">{walletNativeBalance.toFixed(2)} {selectedNetwork === 'polygon' ? 'POL' : 'ETH'}</span>
+            <div className="hidden md:flex items-center gap-3 bg-[#2B2D31] border border-[#383A40] py-2 px-4 rounded-xl text-xs shadow-inner">
+              <Wallet size={14} className="text-grey-muted" />
+              <span className="text-[#80FF56] font-bold font-mono">{walletUsdtBalance.toFixed(2)} USDT</span>
+              <span className="text-[#383A40]">|</span>
+              <span className="text-[#7F56FF] font-bold font-mono">{walletNativeBalance.toFixed(2)} {selectedNetwork === 'polygon' ? 'POL' : 'ETH'}</span>
             </div>
-            <select value={selectedNetwork} onChange={e => setSelectedNetwork(e.target.value as 'polygon'|'arbitrum')} className="bg-charcoal text-off-white border border-border-color text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-neon-purple font-semibold cursor-pointer">
+            <select value={selectedNetwork} onChange={e => setSelectedNetwork(e.target.value as 'polygon'|'arbitrum')} className="bg-[#2B2D31] text-off-white border border-[#383A40] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#7F56FF] font-semibold cursor-pointer">
               <option value="polygon">Polygon (POL)</option>
               <option value="arbitrum">Arbitrum (ETH)</option>
             </select>
-            <div className="flex items-center gap-2 bg-charcoal border border-border-color py-1.5 px-3 rounded-xl">
-              <div className="w-7 h-7 rounded-lg bg-neon-purple/15 text-neon-purple flex items-center justify-center font-bold text-xs">{user.name.charAt(0)}</div>
-              <div className="hidden sm:block"><p className="text-xs font-semibold text-off-white">{user.name}</p><p className="text-[9px] text-grey-muted font-mono">{user.walletAddress.substring(0,6)}...{user.walletAddress.substring(38)}</p></div>
+            <div className="flex items-center gap-3 bg-[#111214] py-1.5 px-1.5 pr-4 rounded-full border border-[#383A40]">
+              <div className="w-8 h-8 rounded-full bg-[#7F56FF]/20 text-[#7F56FF] flex items-center justify-center font-bold text-xs">{user.name.charAt(0)}</div>
+              <div className="hidden sm:block"><p className="text-xs font-bold text-off-white leading-tight">{user.name}</p></div>
             </div>
-            <button onClick={onLogout} className="p-2 text-grey-muted hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Keluar"><LogOut size={16} /></button>
+            <button onClick={onLogout} className="p-2.5 text-grey-muted hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors" title="Keluar"><LogOut size={18} /></button>
           </div>
         </div>
         {/* Sub nav */}
-        <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3 flex gap-1">
-          {[{ id: 'shop' as const, label: 'Katalog Belanja', icon: <ShoppingBag size={15}/> }, { id: 'orders' as const, label: 'Pesanan Saya', icon: <History size={15}/> }].map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)} className={`flex items-center gap-2 py-2 px-4 rounded-xl text-xs font-semibold transition-all ${activeTab === t.id ? 'bg-neon-purple text-white shadow-md shadow-neon-purple/20' : 'text-grey-muted hover:text-off-white hover:bg-charcoal-light/50'}`}>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 flex gap-2">
+          {[{ id: 'shop' as const, label: 'Katalog Belanja', icon: <ShoppingBag size={16}/> }, { id: 'orders' as const, label: 'Pesanan Saya', icon: <History size={16}/> }].map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)} className={`flex items-center gap-2 py-3 px-6 rounded-t-xl text-sm font-bold transition-all ${activeTab === t.id ? 'bg-[#1E1F22] text-[#7F56FF] border-t-2 border-t-[#7F56FF] border-l border-r border-[#383A40]' : 'text-grey-muted hover:text-off-white bg-transparent'}`}>
               {t.icon}<span>{t.label}</span>
-              {t.id === 'orders' && myOrders.length > 0 && <span className="bg-neon-purple/30 text-neon-purple text-[9px] font-bold px-1.5 py-0.5 rounded-full">{myOrders.length}</span>}
+              {t.id === 'orders' && myOrders.length > 0 && <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${activeTab === t.id ? 'bg-[#7F56FF] text-white' : 'bg-[#383A40] text-off-white'}`}>{myOrders.length}</span>}
             </button>
           ))}
         </div>
       </header>
 
-      <main className="grow max-w-7xl mx-auto px-4 md:px-6 py-8 w-full">
+      <main className="grow max-w-7xl mx-auto px-4 md:px-8 py-10 w-full relative">
+        <div className="absolute top-10 left-10 w-[400px] h-[400px] bg-[#7F56FF]/5 rounded-full blur-[100px] pointer-events-none"></div>
+
         {activeTab === 'shop' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
             {/* Products */}
             <div className="lg:col-span-8">
-              <h2 className="font-title text-2xl font-bold text-off-white mb-1">Katalog Unggulan UMKM</h2>
-              <p className="text-sm text-grey-muted mb-6">Dukung bisnis lokal dengan transaksi kripto berbiaya murah.</p>
+              <h2 className="font-title text-3xl font-bold text-off-white mb-2">Katalog UMKM Pilihan</h2>
+              <p className="text-sm text-grey-muted mb-8">Dukung produk lokal berkualitas dengan transaksi kripto berbiaya murah.</p>
+              
               {products.length === 0 ? (
-                <div className="flex flex-col items-center py-16 bg-charcoal-light rounded-2xl border border-dashed border-border-color">
-                  <Database size={40} className="text-grey-muted mb-3 animate-pulse" />
-                  <p className="text-grey-muted text-sm">Mengunduh data katalog...</p>
+                <div className="flex flex-col items-center py-24 bg-[#2B2D31] rounded-3xl border border-dashed border-[#383A40]">
+                  <Package size={48} className="text-[#383A40] mb-4 animate-pulse" />
+                  <p className="text-grey-muted text-sm font-medium">Mengunduh data katalog...</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                   {products.map(p => (
-                    <div key={p.id} className="bg-charcoal-light border border-border-color rounded-2xl overflow-hidden hover:border-neon-purple/50 hover:shadow-xl hover:shadow-neon-purple/5 transition-all duration-300 flex flex-col group">
-                      <div className="h-44 relative bg-charcoal-dark overflow-hidden">
+                    <div key={p.id} className="bg-[#2B2D31] border border-[#383A40] rounded-3xl overflow-hidden hover:border-[#7F56FF]/50 transition-all duration-300 flex flex-col group hover:shadow-[0_0_20px_rgba(127,86,255,0.1)]">
+                      <div className="h-48 relative bg-[#111214] overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        {p.stock <= 5 && <span className="absolute top-3 right-3 bg-red-500/95 text-white text-[10px] font-bold uppercase py-1 px-2 rounded-md">Stok: {p.stock}</span>}
+                        <img src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
+                        {p.stock <= 5 && <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-extrabold uppercase py-1.5 px-3 rounded-full shadow-lg">Sisa {p.stock}</span>}
                       </div>
-                      <div className="p-4 flex flex-col grow">
-                        <h3 className="font-title font-semibold text-off-white group-hover:text-neon-purple transition-colors line-clamp-1">{p.name}</h3>
-                        <p className="text-xs text-grey-muted mt-1.5 mb-4 line-clamp-2 min-h-[32px]">{p.description}</p>
-                        <div className="mt-auto flex items-center justify-between pt-3 border-t border-border-color/50">
-                          <div><span className="text-[10px] text-grey-muted block uppercase tracking-wider">Harga</span><span className="text-base font-bold text-off-white font-title">Rp {p.price_idr.toLocaleString('id-ID')}</span></div>
-                          <button onClick={() => addToCart(p)} disabled={p.stock <= 0} className={`py-2 px-4 rounded-xl text-xs font-semibold transition-all ${p.stock <= 0 ? 'bg-border-color text-grey-muted cursor-not-allowed' : 'bg-neon-purple text-white hover:bg-neon-purple-hover shadow-lg shadow-neon-purple/10'}`}>+ Keranjang</button>
+                      <div className="p-5 flex flex-col grow">
+                        <h3 className="font-title font-bold text-lg text-off-white group-hover:text-[#7F56FF] transition-colors line-clamp-1">{p.name}</h3>
+                        <p className="text-xs text-grey-muted mt-2 mb-5 line-clamp-2 leading-relaxed">{p.description}</p>
+                        <div className="mt-auto flex items-end justify-between pt-4 border-t border-[#383A40]/50">
+                          <div>
+                            <span className="text-[10px] text-grey-muted block uppercase tracking-wider font-semibold mb-0.5">Harga Rupiah</span>
+                            <span className="text-lg font-extrabold text-off-white font-title tracking-tight">Rp {p.price_idr.toLocaleString('id-ID')}</span>
+                          </div>
+                          <button onClick={() => addToCart(p)} disabled={p.stock <= 0} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${p.stock <= 0 ? 'bg-[#111214] text-[#383A40] cursor-not-allowed' : 'bg-[#7F56FF] hover:bg-[#6c42f0] text-white shadow-[0_0_15px_rgba(127,86,255,0.3)] hover:scale-105'}`}>
+                             <ShoppingBag size={18} />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -150,76 +163,96 @@ export default function CustomerView({ user, onLogout }: Props) {
             </div>
 
             {/* Cart sidebar */}
-            <div className="lg:col-span-4 flex flex-col gap-5">
+            <div className="lg:col-span-4 flex flex-col gap-6">
               {/* Payment config */}
-              <div className="bg-charcoal-light border border-border-color rounded-2xl p-5">
-                <h3 className="font-title font-bold text-sm uppercase tracking-wider text-grey-muted mb-4 flex items-center gap-2"><Wallet size={16} className="text-neon-purple"/>Metode Pembayaran</h3>
-                <div className="grid grid-cols-2 gap-2 bg-charcoal-dark border border-border-color p-1 rounded-xl">
+              <div className="bg-[#2B2D31] border border-[#383A40] rounded-3xl p-6 shadow-xl">
+                <h3 className="font-title font-bold text-sm uppercase tracking-wider text-grey-muted mb-4 flex items-center gap-2"><Wallet size={16} className="text-[#7F56FF]"/>Opsi Smart Contract</h3>
+                <div className="grid grid-cols-2 gap-2 bg-[#111214] border border-[#383A40] p-1.5 rounded-2xl mb-3">
                   {(['custody','direct'] as const).map(m => (
-                    <button key={m} onClick={() => setPaymentMethod(m)} className={`py-2 px-3 rounded-lg text-xs font-semibold flex flex-col items-center transition-all ${paymentMethod === m ? 'bg-neon-purple text-white shadow-md' : 'text-grey-muted hover:text-off-white'}`}>
+                    <button key={m} onClick={() => setPaymentMethod(m)} className={`py-2.5 px-2 rounded-xl text-xs font-bold flex flex-col items-center transition-all ${paymentMethod === m ? 'bg-[#7F56FF] text-white shadow-lg' : 'text-grey-muted hover:text-off-white'}`}>
                       <span>{m === 'custody' ? 'USDT Custody' : 'Direct Transfer'}</span>
-                      <span className="text-[9px] font-normal opacity-80">{m === 'custody' ? '(Hemat Gas)' : '(Langsung)'}</span>
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-grey-muted mt-2 leading-relaxed flex items-start gap-1"><Info size={12} className="shrink-0 text-neon-purple mt-0.5"/><span>{paymentMethod === 'custody' ? 'Dana ditahan di Smart Contract. Penjual withdraw batch untuk hemat gas.' : 'USDT langsung ke wallet merchant.'}</span></p>
+                <div className="bg-[#1E1F22] p-3 rounded-xl border border-[#383A40]/50 flex items-start gap-2">
+                   <Info size={14} className="shrink-0 text-[#7F56FF] mt-0.5"/>
+                   <p className="text-[11px] text-grey-muted leading-relaxed">
+                     {paymentMethod === 'custody' ? 'Dana ditahan sementara di Smart Contract. Penjual menarik dana secara batch untuk menghemat 90% gas fee.' : 'USDT langsung ditransfer ke wallet penjual. Biaya gas ditanggung sepenuhnya per transaksi.'}
+                   </p>
+                </div>
               </div>
 
               {/* Cart */}
-              <div className="bg-charcoal-light border border-border-color rounded-2xl p-5">
-                <h3 className="font-title font-bold text-base text-off-white mb-4 flex items-center gap-2"><ShoppingBag size={18} className="text-neon-purple"/>Keranjang ({cart.length})</h3>
+              <div className="bg-[#2B2D31] border border-[#383A40] rounded-3xl p-6 shadow-xl flex flex-col max-h-[600px]">
+                <div className="flex items-center justify-between mb-5">
+                   <h3 className="font-title font-bold text-lg text-off-white flex items-center gap-2"><ShoppingBag size={20} className="text-[#7F56FF]"/>Keranjang</h3>
+                   {cart.length > 0 && <span className="bg-[#7F56FF]/20 text-[#7F56FF] text-xs font-bold px-2.5 py-1 rounded-full">{cart.length} item</span>}
+                </div>
+
                 {cart.length === 0 ? (
-                  <div className="py-8 text-center"><ShoppingBag size={32} className="text-border-color mx-auto mb-2"/><p className="text-sm text-grey-muted">Keranjang kosong.</p></div>
+                  <div className="py-12 text-center flex flex-col items-center"><ShoppingBag size={40} className="text-[#383A40] mb-4"/><p className="text-sm text-grey-muted">Keranjang masih kosong.</p></div>
                 ) : (
-                  <div className="flex flex-col gap-4">
-                    <div className="max-h-52 overflow-y-auto pr-1 flex flex-col gap-2.5">
+                  <>
+                    <div className="overflow-y-auto pr-2 flex flex-col gap-3 flex-1 min-h-0 mb-5">
                       {cart.map(i => (
-                        <div key={i.product.id} className="flex items-center justify-between gap-3 bg-charcoal-dark border border-border-color/50 p-3 rounded-xl">
-                          <div className="flex items-center gap-2.5 min-w-0">
+                        <div key={i.product.id} className="flex items-center justify-between gap-3 bg-[#111214] border border-[#383A40] p-3 rounded-2xl group hover:border-[#7F56FF]/40 transition-colors">
+                          <div className="flex items-center gap-3 min-w-0">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={i.product.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-charcoal"/>
-                            <div className="min-w-0"><h4 className="text-xs font-bold text-off-white truncate">{i.product.name}</h4><p className="text-[10px] text-grey-muted">{i.quantity} x Rp {i.product.price_idr.toLocaleString('id-ID')}</p></div>
+                            <img src={i.product.image_url} alt="" className="w-12 h-12 rounded-xl object-cover bg-[#1E1F22] border border-[#383A40]"/>
+                            <div className="min-w-0">
+                               <h4 className="text-xs font-bold text-off-white truncate mb-1 group-hover:text-[#7F56FF] transition-colors">{i.product.name}</h4>
+                               <p className="text-[11px] text-grey-muted font-medium">{i.quantity} x <span className="text-off-white">Rp {i.product.price_idr.toLocaleString('id-ID')}</span></p>
+                            </div>
                           </div>
-                          <button onClick={() => removeFromCart(i.product.id)} className="p-1.5 text-red-400/75 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={14}/></button>
+                          <button onClick={() => removeFromCart(i.product.id)} className="p-2 text-[#383A40] hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"><Trash2 size={16}/></button>
                         </div>
                       ))}
                     </div>
-                    <div className="border-t border-border-color pt-4 flex flex-col gap-2">
-                      <div className="flex justify-between text-sm"><span className="text-grey-muted">Subtotal</span><span className="font-bold text-off-white">Rp {getCartTotal().toLocaleString('id-ID')}</span></div>
-                      <div className="flex justify-between text-sm py-1 bg-charcoal-dark/50 border border-border-color/30 rounded-lg px-2.5"><span className="text-grey-muted text-xs">Konversi USDT</span><span className="font-bold text-lime-green font-mono">~ {(getCartTotal() / 16400).toFixed(2)} USDT</span></div>
+                    <div className="border-t border-[#383A40] pt-5 mt-auto">
+                      <div className="flex justify-between items-end mb-3"><span className="text-sm font-medium text-grey-muted">Total (IDR)</span><span className="font-extrabold text-xl text-off-white font-title tracking-tight">Rp {getCartTotal().toLocaleString('id-ID')}</span></div>
+                      <div className="flex justify-between items-center py-2.5 bg-[#111214] border border-[#383A40] rounded-xl px-4 mb-5"><span className="text-[11px] font-bold text-grey-muted uppercase tracking-wider">Konversi L2</span><span className="font-bold text-[#80FF56] font-mono text-base">~ {(getCartTotal() / 16400).toFixed(2)} USDT</span></div>
+                      <button onClick={startCheckout} className="w-full bg-[#7F56FF] hover:bg-[#6c42f0] text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(127,86,255,0.4)] flex items-center justify-center gap-2 hover:scale-[1.02]">
+                        <Wallet size={18}/> Bayar dengan USDT
+                      </button>
                     </div>
-                    <button onClick={startCheckout} className="w-full bg-neon-purple text-white py-3 rounded-xl font-semibold text-sm hover:bg-neon-purple-hover transition-colors shadow-lg shadow-neon-purple/20 flex items-center justify-center gap-2"><Wallet size={16}/>Checkout dengan USDT</button>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
           </div>
         ) : (
           /* My Orders Tab */
-          <div>
-            <h2 className="font-title text-2xl font-bold text-off-white mb-1">Pesanan Saya</h2>
-            <p className="text-sm text-grey-muted mb-6">Riwayat transaksi USDT Anda.</p>
+          <div className="relative z-10 max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+               <div>
+                 <h2 className="font-title text-3xl font-bold text-off-white mb-2">Pesanan Saya</h2>
+                 <p className="text-sm text-grey-muted">Riwayat transaksi Web3 Anda.</p>
+               </div>
+            </div>
+            
             {myOrders.length === 0 ? (
-              <div className="py-16 text-center bg-charcoal-light rounded-2xl border border-dashed border-border-color"><Package size={40} className="text-grey-muted mx-auto mb-3"/><p className="text-grey-muted text-sm">Belum ada pesanan.</p></div>
+              <div className="py-24 text-center bg-[#2B2D31] rounded-3xl border border-dashed border-[#383A40]"><History size={48} className="text-[#383A40] mx-auto mb-4"/><p className="text-grey-muted text-sm">Belum ada riwayat pesanan.</p></div>
             ) : (
-              <div className="grid gap-4">
+              <div className="flex flex-col gap-4">
                 {myOrders.map(o => (
-                  <div key={o.id} className="bg-charcoal-light border border-border-color rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-mono font-bold text-sm text-off-white">{o.id}</span>
-                        <span className={`text-[10px] font-bold uppercase py-0.5 px-2 rounded-full border ${o.status === 'paid' ? 'bg-lime-green/10 text-lime-green border-lime-green/20' : o.status === 'anomaly' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'}`}>
-                          {o.status === 'paid' ? 'Lunas' : o.status === 'anomaly' ? 'Anomali' : 'Pending'}
+                  <div key={o.id} className="bg-[#2B2D31] border border-[#383A40] rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5 hover:border-[#7F56FF]/50 transition-colors group">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono font-bold text-base text-off-white group-hover:text-[#7F56FF] transition-colors">{o.id}</span>
+                        <span className={`text-[10px] font-extrabold uppercase py-1 px-3 rounded-full border ${o.status === 'paid' ? 'bg-[#80FF56]/10 text-[#80FF56] border-[#80FF56]/20' : o.status === 'anomaly' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'}`}>
+                          {o.status}
                         </span>
-                        <span className={`text-[10px] font-bold uppercase ${o.blockchain_network === 'polygon' ? 'text-purple-400' : 'text-blue-400'}`}>{o.blockchain_network}</span>
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-grey-muted">
-                        <span>Rp {o.total_price_idr.toLocaleString('id-ID')}</span>
-                        <span className="text-lime-green font-mono">{Number(o.total_price_usdt).toFixed(2)} USDT</span>
-                        <span>{new Date(o.created_at).toLocaleDateString('id-ID')}</span>
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+                        <span className="text-grey-muted font-medium">Rp {o.total_price_idr.toLocaleString('id-ID')}</span>
+                        <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#383A40]"></div><span className="text-[#80FF56] font-mono font-bold text-sm">{Number(o.total_price_usdt).toFixed(2)} USDT</span></div>
+                        <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#383A40]"></div><span className="text-grey-muted uppercase font-bold">{o.blockchain_network}</span></div>
                       </div>
                     </div>
-                    {o.transaction_hash && <p className="text-[10px] font-mono text-grey-muted truncate max-w-[200px]">{o.transaction_hash}</p>}
+                    <div className="flex flex-col sm:items-end gap-2 border-t sm:border-t-0 border-[#383A40] pt-4 sm:pt-0">
+                       <span className="text-[11px] text-grey-muted font-medium">{new Date(o.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                       {o.transaction_hash && <a href="#" className="text-[10px] font-mono text-[#7F56FF] hover:text-[#80FF56] truncate max-w-[200px] transition-colors flex items-center gap-1"><ShieldAlert size={10}/> Tx Hash Terekam</a>}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -228,30 +261,36 @@ export default function CustomerView({ user, onLogout }: Props) {
         )}
       </main>
 
-      <footer className="bg-charcoal-dark border-t border-border-color py-6 text-center text-xs text-grey-muted">
-        <p>© 2026 STUMA Platform — Dikembangkan untuk kemajuan UMKM Indonesia</p>
-      </footer>
-
       {/* Checkout Modal */}
       {checkoutStep !== 'idle' && checkoutOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal-dark/70 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-charcoal border border-border-color max-w-md w-full rounded-2xl p-6 shadow-2xl relative">
-            {(checkoutStep === 'success' || checkoutStep === 'anomaly') && <button onClick={() => setCheckoutStep('idle')} className="absolute top-4 right-4 p-1 text-grey-muted hover:text-off-white hover:bg-charcoal-light rounded-lg transition-colors"><X size={18}/></button>}
-            <div className="flex flex-col items-center text-center">
-              {checkoutStep === 'converting' && (<div className="py-6 flex flex-col items-center"><div className="w-12 h-12 rounded-full border-4 border-neon-purple/20 border-t-neon-purple animate-spin mb-4"/><h3 className="font-title font-bold text-lg text-off-white">Menghubungi Oracle</h3><p className="text-xs text-grey-muted mt-2">Mengonversi harga Rupiah ke USDT...</p></div>)}
-              {checkoutStep === 'gas_estimating' && (<div className="py-6 flex flex-col items-center"><div className="w-12 h-12 rounded-full border-4 border-neon-purple/20 border-t-neon-purple animate-spin mb-4"/><h3 className="font-title font-bold text-lg text-off-white">Gas Estimation</h3><p className="text-xs text-grey-muted mt-2">Menghitung gas fee {selectedNetwork}...</p><div className="mt-4 bg-charcoal-dark border border-border-color py-1.5 px-3 rounded-lg text-xs font-mono">Gas: {Number(checkoutOrder.gas_fee_estimated || 0.005).toFixed(6)} {selectedNetwork === 'polygon' ? 'POL' : 'ETH'}</div></div>)}
-              {checkoutStep === 'signing' && (<div className="py-4 w-full"><div className="w-12 h-12 rounded-xl bg-neon-purple/15 text-neon-purple flex items-center justify-center mx-auto mb-4 animate-bounce"><Wallet size={24}/></div><h3 className="font-title font-bold text-lg text-off-white">Konfirmasi Transaksi</h3><p className="text-xs text-grey-muted mt-2 mx-auto max-w-xs">Otorisasi pembayaran USDT ke smart contract STUMA.</p>
-                <div className="bg-charcoal-dark border border-border-color/80 rounded-xl p-4 my-5 text-left text-xs flex flex-col gap-2.5">
-                  <div className="flex justify-between"><span className="text-grey-muted">Order ID:</span><span className="font-bold text-off-white font-mono">{checkoutOrder.id}</span></div>
-                  <div className="flex justify-between"><span className="text-grey-muted">Total:</span><span className="font-bold text-lime-green font-mono">{Number(checkoutOrder.total_price_usdt).toFixed(2)} USDT</span></div>
-                  <div className="flex justify-between border-t border-border-color/50 pt-2.5"><span className="text-grey-muted">Jaringan:</span><span className="font-bold text-off-white uppercase">{checkoutOrder.blockchain_network}</span></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#111214]/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#2B2D31] border border-[#383A40] max-w-md w-full rounded-3xl p-8 shadow-[0_0_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
+            
+            {/* Modal bg glow */}
+            <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[100px] pointer-events-none ${checkoutStep === 'success' ? 'bg-[#80FF56]/10' : checkoutStep === 'anomaly' ? 'bg-red-500/10' : 'bg-[#7F56FF]/10'}`}></div>
+
+            {(checkoutStep === 'success' || checkoutStep === 'anomaly') && <button onClick={() => setCheckoutStep('idle')} className="absolute top-5 right-5 p-2 text-grey-muted hover:text-off-white hover:bg-[#383A40] rounded-xl transition-colors z-20"><X size={20}/></button>}
+            
+            <div className="flex flex-col items-center text-center relative z-10">
+              {checkoutStep === 'converting' && (<div className="py-8 flex flex-col items-center"><div className="w-16 h-16 rounded-full border-4 border-[#7F56FF]/20 border-t-[#7F56FF] animate-spin mb-6 shadow-[0_0_15px_rgba(127,86,255,0.3)]"/><h3 className="font-title font-bold text-2xl text-off-white mb-2">Sinkronisasi Oracle</h3><p className="text-sm text-grey-muted">Mengambil data konversi Rupiah ke USDT real-time...</p></div>)}
+              
+              {checkoutStep === 'gas_estimating' && (<div className="py-8 flex flex-col items-center"><div className="w-16 h-16 rounded-full border-4 border-[#7F56FF]/20 border-t-[#7F56FF] animate-spin mb-6 shadow-[0_0_15px_rgba(127,86,255,0.3)]"/><h3 className="font-title font-bold text-2xl text-off-white mb-2">Kalkulasi Gas Fee</h3><p className="text-sm text-grey-muted mb-6">Menghubungi RPC node {selectedNetwork}...</p><div className="bg-[#111214] border border-[#383A40] py-2 px-5 rounded-xl text-sm font-mono font-bold text-[#80FF56]">Gas: {Number(checkoutOrder.gas_fee_estimated || 0.005).toFixed(6)} {selectedNetwork === 'polygon' ? 'POL' : 'ETH'}</div></div>)}
+              
+              {checkoutStep === 'signing' && (<div className="py-4 w-full"><div className="w-16 h-16 rounded-2xl bg-[#7F56FF]/20 text-[#7F56FF] flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(127,86,255,0.3)]"><Wallet size={32}/></div><h3 className="font-title font-bold text-2xl text-off-white mb-2">Konfirmasi Web3</h3><p className="text-sm text-grey-muted mb-8">Mohon tandatangani transaksi di dompet kripto Anda.</p>
+                <div className="bg-[#111214] border border-[#383A40] rounded-2xl p-5 mb-6 text-left text-sm flex flex-col gap-4">
+                  <div className="flex justify-between items-center"><span className="text-grey-muted font-medium">Order ID</span><span className="font-bold text-off-white font-mono">{checkoutOrder.id}</span></div>
+                  <div className="flex justify-between items-center"><span className="text-grey-muted font-medium">Total Dibayar</span><span className="font-extrabold text-[#80FF56] font-mono text-lg">{Number(checkoutOrder.total_price_usdt).toFixed(2)} USDT</span></div>
+                  <div className="flex justify-between items-center border-t border-[#383A40] pt-4"><span className="text-grey-muted font-medium">Jaringan</span><span className="font-bold text-[#7F56FF] uppercase tracking-wider">{checkoutOrder.blockchain_network}</span></div>
                 </div>
-                <div className="border border-border-color/60 bg-charcoal-dark p-3 rounded-xl mb-5 text-left flex items-start gap-2.5"><input type="checkbox" id="anomaly_check" checked={simulateAnomaly} onChange={e => setSimulateAnomaly(e.target.checked)} className="mt-1 cursor-pointer accent-neon-purple"/><label htmlFor="anomaly_check" className="text-[11px] text-grey-muted leading-tight cursor-pointer"><strong className="text-yellow-500 block mb-0.5">Simulasi Anomali (QA)</strong>Kirim USDT lebih rendah dari tagihan.</label></div>
-                <button onClick={completePayment} className="w-full bg-neon-purple hover:bg-neon-purple-hover text-white py-3 rounded-xl text-xs font-semibold shadow-lg transition-all">Tanda Tangani (Sign)</button>
+                <div className="border border-red-500/30 bg-red-500/5 p-4 rounded-xl mb-8 text-left flex items-start gap-3"><input type="checkbox" id="anomaly_check" checked={simulateAnomaly} onChange={e => setSimulateAnomaly(e.target.checked)} className="mt-1 accent-red-500 w-4 h-4"/><label htmlFor="anomaly_check" className="text-xs text-grey-muted leading-relaxed cursor-pointer"><strong className="text-red-400 block mb-1">Mode Pengujian QA (Anomali)</strong>Aktifkan untuk mensimulasikan pengiriman USDT yang lebih sedikit dari total tagihan.</label></div>
+                <button onClick={completePayment} className="w-full bg-[#7F56FF] hover:bg-[#6c42f0] text-white py-4 rounded-xl text-sm font-bold shadow-[0_0_20px_rgba(127,86,255,0.4)] transition-all hover:scale-[1.02]">Tanda Tangani Transaksi</button>
               </div>)}
-              {checkoutStep === 'webhook' && (<div className="py-6 flex flex-col items-center"><div className="w-12 h-12 rounded-full border-4 border-lime-green/20 border-t-lime-green animate-spin mb-4"/><h3 className="font-title font-bold text-lg text-off-white">Verifikasi Webhook</h3><p className="text-xs text-grey-muted mt-2">Menunggu konfirmasi blockchain...</p><p className="text-[10px] text-grey-muted/60 font-mono mt-4 truncate max-w-[320px]">Hash: {txHash}</p></div>)}
-              {checkoutStep === 'success' && (<div className="py-4"><div className="w-14 h-14 rounded-full bg-lime-green-light text-lime-green flex items-center justify-center mx-auto mb-4 border border-lime-green/25"><CheckCircle size={28}/></div><h3 className="font-title font-bold text-lg text-lime-green">Transaksi Sukses!</h3><p className="text-xs text-grey-muted mt-2 mx-auto max-w-xs">Pembayaran USDT Anda telah diverifikasi.</p><div className="bg-charcoal-dark border border-border-color/80 rounded-xl p-4 my-5 text-left text-xs flex flex-col gap-2"><div className="flex justify-between"><span className="text-grey-muted">ID:</span><span className="font-bold text-off-white font-mono">{checkoutOrder.id}</span></div><div className="flex justify-between"><span className="text-grey-muted">USDT:</span><span className="font-bold text-lime-green font-mono">{Number(checkoutOrder.total_price_usdt).toFixed(2)}</span></div></div><button onClick={() => setCheckoutStep('idle')} className="w-full bg-charcoal-light border border-border-color hover:bg-charcoal text-off-white py-2.5 rounded-xl text-xs font-semibold transition-colors">Kembali Belanja</button></div>)}
-              {checkoutStep === 'anomaly' && (<div className="py-4"><div className="w-14 h-14 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/25"><ShieldAlert size={28}/></div><h3 className="font-title font-bold text-lg text-red-400">Pembayaran Ditangguhkan!</h3><p className="text-xs text-grey-muted mt-2 mx-auto max-w-xs">Anomali terdeteksi. Pesanan ditangguhkan.</p><button onClick={() => setCheckoutStep('idle')} className="w-full mt-5 bg-charcoal-light border border-border-color text-off-white py-2.5 rounded-xl text-xs font-semibold">Tutup</button></div>)}
+              
+              {checkoutStep === 'webhook' && (<div className="py-8 flex flex-col items-center"><div className="w-16 h-16 rounded-full border-4 border-[#80FF56]/20 border-t-[#80FF56] animate-spin mb-6 shadow-[0_0_15px_rgba(128,255,86,0.3)]"/><h3 className="font-title font-bold text-2xl text-off-white mb-2">Verifikasi Block</h3><p className="text-sm text-grey-muted mb-6">Menunggu konfirmasi dari jaringan blockchain...</p><div className="bg-[#111214] border border-[#383A40] py-2.5 px-4 rounded-xl w-full"><p className="text-[10px] text-grey-muted font-mono truncate">Tx: {txHash}</p></div></div>)}
+              
+              {checkoutStep === 'success' && (<div className="py-6 w-full"><div className="w-20 h-20 rounded-full bg-[#80FF56]/20 text-[#80FF56] flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(128,255,86,0.3)]"><CheckCircle size={40}/></div><h3 className="font-title font-bold text-2xl text-[#80FF56] mb-2">Pembayaran Lunas!</h3><p className="text-sm text-grey-muted mb-8">Transaksi USDT Anda berhasil divalidasi oleh Smart Contract.</p><div className="bg-[#111214] border border-[#383A40] rounded-2xl p-5 mb-8 text-left text-sm flex flex-col gap-3"><div className="flex justify-between"><span className="text-grey-muted font-medium">Order ID</span><span className="font-bold text-off-white font-mono">{checkoutOrder.id}</span></div><div className="flex justify-between"><span className="text-grey-muted font-medium">Jumlah Lunas</span><span className="font-bold text-[#80FF56] font-mono">{Number(checkoutOrder.total_price_usdt).toFixed(2)} USDT</span></div></div><button onClick={() => setCheckoutStep('idle')} className="w-full bg-[#383A40] hover:bg-white hover:text-[#111214] text-off-white py-3.5 rounded-xl text-sm font-bold transition-all">Selesai & Kembali</button></div>)}
+              
+              {checkoutStep === 'anomaly' && (<div className="py-6 w-full"><div className="w-20 h-20 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(239,68,68,0.3)]"><ShieldAlert size={40}/></div><h3 className="font-title font-bold text-2xl text-red-500 mb-2">Transaksi Ditangguhkan</h3><p className="text-sm text-grey-muted mb-8">Sistem mendeteksi ketidaksesuaian jumlah transfer USDT. Pesanan memerlukan investigasi manual.</p><button onClick={() => setCheckoutStep('idle')} className="w-full bg-[#111214] border border-[#383A40] hover:border-red-500 text-off-white py-3.5 rounded-xl text-sm font-bold transition-all">Tutup Peringatan</button></div>)}
             </div>
           </div>
         </div>
