@@ -15,6 +15,11 @@
   --off-white: #F3F4F6;
   --grey-muted: #9CA3AF;
   --border-color: #383A40;
+  
+  --amber-accent: #FFA726;
+  --amber-accent-light: rgba(255, 167, 38, 0.15);
+  --cyan-accent: #26C6DA;
+  --cyan-accent-light: rgba(38, 198, 218, 0.15);
 }
 
 @theme {
@@ -28,6 +33,10 @@
   --color-off-white: var(--off-white);
   --color-grey-muted: var(--grey-muted);
   --color-border-color: var(--border-color);
+  --color-amber-accent: var(--amber-accent);
+  --color-amber-accent-light: var(--amber-accent-light);
+  --color-cyan-accent: var(--cyan-accent);
+  --color-cyan-accent-light: var(--cyan-accent-light);
   
   --font-sans: 'Inter', sans-serif;
   --font-title: 'Plus Jakarta Sans', sans-serif;
@@ -56,4 +65,86 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--grey-muted);
+}
+
+/* Login page animated background particles */
+@keyframes floatParticle {
+  0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.3; }
+  25% { transform: translateY(-20px) translateX(10px); opacity: 0.6; }
+  50% { transform: translateY(-10px) translateX(-5px); opacity: 0.4; }
+  75% { transform: translateY(-25px) translateX(15px); opacity: 0.5; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(127, 86, 255, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(127, 86, 255, 0.3); }
+}
+
+@keyframes slideUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-pulseGlow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+/* Sidebar active indicator */
+.sidebar-item-active {
+  position: relative;
+}
+.sidebar-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: var(--neon-purple);
+  border-radius: 0 4px 4px 0;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(43, 45, 49, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+}
+
+/* Chart bar animation */
+@keyframes growBar {
+  0% { transform: scaleY(0); }
+  100% { transform: scaleY(1); }
+}
+.chart-bar {
+  animation: growBar 0.6s ease-out forwards;
+  transform-origin: bottom;
+}
+
+/* Tooltip */
+.tooltip-trigger:hover .tooltip-content {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.tooltip-content {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: all 0.2s ease;
 }
