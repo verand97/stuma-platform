@@ -50,6 +50,31 @@ export default function LoginScreen({ onLogin, onBackToLanding }: LoginScreenPro
 
   const roles: UserRole[] = ['pelanggan', 'admin', 'superadmin'];
 
+  const handleMetaMaskLogin = async () => {
+    if (typeof window !== 'undefined' && 'ethereum' in window) {
+      const win = window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } };
+      try {
+        const accounts = await win.ethereum.request({ method: 'eth_requestAccounts' });
+        if (accounts.length > 0) {
+          const walletAddress = accounts[0];
+          
+          // Login automatically as Admin Merchant using their real wallet
+          const metaMaskUser: UserSession = {
+            name: 'Web3 Admin',
+            email: 'admin@web3.eth',
+            role: 'admin',
+            walletAddress: walletAddress,
+          };
+          onLogin(metaMaskUser);
+        }
+      } catch {
+        alert('Gagal menghubungkan MetaMask. Silakan coba lagi.');
+      }
+    } else {
+      alert('MetaMask tidak terdeteksi! Silakan install ekstensi dompet Web3 di browser Anda.');
+    }
+  };
+
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -186,7 +211,7 @@ export default function LoginScreen({ onLogin, onBackToLanding }: LoginScreenPro
           <div className="mt-8 pt-6 border-t border-[#383A40] text-center">
              <p className="text-xs text-grey-muted mb-4">Atau hubungkan langsung dengan Web3 Wallet</p>
              <button 
-               onClick={() => setShowRoleSelect(true)}
+               onClick={handleMetaMaskLogin}
                className="w-full bg-transparent border border-[#383A40] hover:border-[#80FF56] text-off-white py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 hover:text-[#80FF56]"
              >
                <span className="w-5 h-5 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-[10px]">🦊</span>

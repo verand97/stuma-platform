@@ -10,6 +10,12 @@ export interface Product {
   image_url: string;
 }
 
+export interface OrderItem {
+  product?: Product;
+  product_id?: number;
+  quantity: number;
+}
+
 export interface Order {
   id: string;
   customer_address: string;
@@ -22,6 +28,7 @@ export interface Order {
   transaction_hash: string | null;
   payment_method: 'custody' | 'direct';
   created_at: string;
+  items?: OrderItem[];
 }
 
 export interface AnomalyLog {
@@ -68,7 +75,7 @@ export interface DashboardData {
 const BACKEND_URL = 'http://localhost:8000';
 
 // Fallback Mock Data
-const MOCK_PRODUCTS: Product[] = [
+export const MOCK_PRODUCTS: Product[] = [
   {
     id: 1,
     name: 'Batik Tulis Solo Canting Mas',
@@ -156,8 +163,9 @@ export async function createOrder(data: {
       throw new Error(errData.message || 'API order creation failed');
     }
     return await res.json();
-  } catch (err: any) {
-    console.log('Simulating order creation locally:', err.message);
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    console.log('Simulating order creation locally:', errorMessage);
     
     // Simulate locally
     const usdtRate = 16400; // Mock rate
@@ -202,11 +210,10 @@ export async function triggerBlockchainWebhook(data: {
     });
     if (!res.ok) throw new Error('API Webhook failed');
     return await res.json();
-  } catch (err) {
+  } catch {
     console.log('Simulating blockchain webhook verification locally');
     
     // Simulate check
-    const isAnomaly = Math.abs(data.amount_usdt - 10.0) < 0.0001; // Just a logic trigger
     return {
       message: 'Simulated OK',
       status: 'paid', // Will override based on amount matching inside frontend component
@@ -267,8 +274,9 @@ export async function requestWithdrawal(merchantAddress: string): Promise<{ mess
       throw new Error(errData.message || 'API withdrawal failed');
     }
     return await res.json();
-  } catch (err: any) {
-    throw new Error(err.message || 'Backend offline');
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Backend offline';
+    throw new Error(errorMessage);
   }
 }
 
@@ -281,7 +289,8 @@ export async function resolveAnomaly(orderId: string, action: 'approve' | 'refun
     });
     if (!res.ok) throw new Error('API resolve anomaly failed');
     return await res.json();
-  } catch (err: any) {
-    throw new Error(err.message || 'Backend offline');
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Backend offline';
+    throw new Error(errorMessage);
   }
 }
