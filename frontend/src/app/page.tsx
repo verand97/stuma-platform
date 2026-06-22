@@ -60,7 +60,7 @@ export default function StumaApp() {
     case 'pelanggan':
       return <CustomerView user={session} onLogout={handleLogout} onUpdateSession={handleUpdateSession} />;
     case 'admin':
-      return <AdminView user={session} onLogout={handleLogout} />;
+      return <AdminView user={session} onLogout={handleLogout} onUpdateSession={handleUpdateSession} />;
     case 'superadmin':
       return <SuperAdminView user={session} onLogout={handleLogout} />;
     default:

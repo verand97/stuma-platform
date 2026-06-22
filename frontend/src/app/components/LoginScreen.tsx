@@ -105,12 +105,11 @@ export default function LoginScreen({ onLogin, onBackToLanding }: LoginScreenPro
   };
 
   const handleRoleSelection = (role: UserRole) => {
-    const baseUser = MOCK_USERS[role];
     const newUser: UserSession = {
-      ...baseUser,
-      name: name || baseUser.name,
-      email: email || baseUser.email,
-      role: role, // Explicitly set the role they chose
+      name: name || ROLE_CONFIG[role].label,
+      email: email,
+      role: role,
+      walletAddress: '',
     };
 
     // Save to local DB so they can't change it later

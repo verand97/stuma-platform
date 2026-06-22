@@ -18,9 +18,9 @@ export default function CustomerView({ user, onLogout, onUpdateSession }: Props)
   const [walletHistory, setWalletHistory] = useState<{address: string; changedAt: string; method: string}[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('stuma_wallet_history_' + user.email);
-      return saved ? JSON.parse(saved) : [{ address: user.walletAddress, changedAt: new Date().toISOString(), method: 'Pendaftaran Awal' }];
+      if (saved) return JSON.parse(saved);
     }
-    return [{ address: user.walletAddress, changedAt: new Date().toISOString(), method: 'Pendaftaran Awal' }];
+    return user.walletAddress ? [{ address: user.walletAddress, changedAt: new Date().toISOString(), method: 'Pendaftaran Awal' }] : [];
   });
   const [selectedNetwork, setSelectedNetwork] = useState<'polygon'|'arbitrum'>('polygon');
   const [paymentMethod, setPaymentMethod] = useState<'custody'|'direct'>('custody');
@@ -109,6 +109,11 @@ export default function CustomerView({ user, onLogout, onUpdateSession }: Props)
 
   const startCheckout = async () => {
     if (cart.length === 0) return;
+    if (!user.walletAddress) {
+      alert('Anda harus menghubungkan dompet Anda terlebih dahulu sebelum melakukan checkout. Silakan buka tab "Dompet Saya".');
+      setActiveTab('wallet');
+      return;
+    }
     setCheckoutStep('converting');
     const items = cart.map(i => ({ product_id: i.product.id, quantity: i.quantity }));
     try {
@@ -213,10 +218,17 @@ export default function CustomerView({ user, onLogout, onUpdateSession }: Props)
                     <p className="text-xs text-grey-muted">Alamat dompet yang terhubung ke akun Anda</p>
                   </div>
                   <div className="ml-auto flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 bg-[#80FF56]/10 text-[#80FF56] text-[10px] font-extrabold uppercase px-3 py-1.5 rounded-full border border-[#80FF56]/20">
-                      <span className="w-2 h-2 rounded-full bg-[#80FF56] animate-pulse"></span>
-                      Terhubung
-                    </span>
+                    {user.walletAddress ? (
+                      <span className="inline-flex items-center gap-1.5 bg-[#80FF56]/10 text-[#80FF56] text-[10px] font-extrabold uppercase px-3 py-1.5 rounded-full border border-[#80FF56]/20">
+                        <span className="w-2 h-2 rounded-full bg-[#80FF56] animate-pulse"></span>
+                        Terhubung
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 bg-yellow-500/10 text-yellow-500 text-[10px] font-extrabold uppercase px-3 py-1.5 rounded-full border border-yellow-500/20">
+                        <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
+                        Belum Terhubung
+                      </span>
+                    )}
                   </div>
                 </div>
                 
@@ -224,26 +236,32 @@ export default function CustomerView({ user, onLogout, onUpdateSession }: Props)
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-2">Alamat Wallet (EVM)</span>
-                      <p className="font-mono text-sm text-off-white break-all leading-relaxed">{user.walletAddress}</p>
+                      {user.walletAddress ? (
+                        <p className="font-mono text-sm text-off-white break-all leading-relaxed">{user.walletAddress}</p>
+                      ) : (
+                        <p className="text-sm text-yellow-500/80 italic">Belum ada alamat dompet terhubung. Hubungkan dompet MetaMask atau input manual alamat dompet Anda.</p>
+                      )}
                     </div>
-                    <button 
-                      onClick={() => copyToClipboard(user.walletAddress)}
-                      className="shrink-0 p-3 rounded-xl bg-[#2B2D31] border border-[#383A40] hover:border-[#7F56FF] text-grey-muted hover:text-[#7F56FF] transition-all hover:scale-105"
-                      title="Salin alamat"
-                    >
-                      {copiedAddress ? <Check size={18} className="text-[#80FF56]" /> : <Copy size={18} />}
-                    </button>
+                    {user.walletAddress && (
+                      <button 
+                        onClick={() => copyToClipboard(user.walletAddress)}
+                        className="shrink-0 p-3 rounded-xl bg-[#2B2D31] border border-[#383A40] hover:border-[#7F56FF] text-grey-muted hover:text-[#7F56FF] transition-all hover:scale-105"
+                        title="Salin alamat"
+                      >
+                        {copiedAddress ? <Check size={18} className="text-[#80FF56]" /> : <Copy size={18} />}
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                   <div className="bg-[#111214] border border-[#383A40] rounded-xl p-4">
                     <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-1">Saldo USDT</span>
-                    <span className="font-mono font-extrabold text-lg text-[#80FF56]">{walletUsdtBalance.toFixed(2)}</span>
+                    <span className="font-mono font-extrabold text-lg text-[#80FF56]">{user.walletAddress ? walletUsdtBalance.toFixed(2) : '0.00'}</span>
                   </div>
                   <div className="bg-[#111214] border border-[#383A40] rounded-xl p-4">
                     <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-1">{selectedNetwork === 'polygon' ? 'POL' : 'ETH'} Balance</span>
-                    <span className="font-mono font-extrabold text-lg text-[#7F56FF]">{walletNativeBalance.toFixed(4)}</span>
+                    <span className="font-mono font-extrabold text-lg text-[#7F56FF]">{user.walletAddress ? walletNativeBalance.toFixed(4) : '0.0000'}</span>
                   </div>
                   <div className="bg-[#111214] border border-[#383A40] rounded-xl p-4">
                     <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-1">Jaringan</span>
@@ -255,7 +273,7 @@ export default function CustomerView({ user, onLogout, onUpdateSession }: Props)
                   onClick={() => { setShowWalletModal(true); setWalletChangeStep('idle'); setNewWalletAddress(''); }}
                   className="w-full sm:w-auto bg-[#7F56FF] hover:bg-[#6c42f0] text-white py-3.5 px-8 rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(127,86,255,0.3)] hover:shadow-[0_0_30px_rgba(127,86,255,0.5)] hover:scale-[1.02] flex items-center justify-center gap-2"
                 >
-                  <RefreshCw size={18} /> Ganti Dompet
+                  <RefreshCw size={18} /> {user.walletAddress ? 'Ganti Dompet' : 'Hubungkan Dompet'}
                 </button>
               </div>
             </div>

@@ -1,14 +1,18 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Wallet, History, ArrowUpRight, CheckCircle, Plus, X, ShieldAlert, Package, LayoutDashboard, UploadCloud, Info, Receipt, ExternalLink, Copy, Globe } from 'lucide-react';
+import { Wallet, History, ArrowUpRight, CheckCircle, Plus, X, ShieldAlert, Package, LayoutDashboard, UploadCloud, Info, Receipt, ExternalLink, Copy, Globe, AlertTriangle, RefreshCw } from 'lucide-react';
 import { UserSession } from '../../utils/types';
 import { getDashboardData, requestWithdrawal, resolveAnomaly, checkBackendOnline, DashboardData, Order, OrderItem, AnomalyLog, Withdrawal, MOCK_PRODUCTS } from '../../utils/api';
 import Sidebar, { SidebarItem } from './Sidebar';
 
-interface Props { user: UserSession; onLogout: () => void; }
+interface Props { 
+  user: UserSession; 
+  onLogout: () => void; 
+  onUpdateSession?: (updatedUser: UserSession) => void;
+}
 
-export default function AdminView({ user, onLogout }: Props) {
+export default function AdminView({ user, onLogout, onUpdateSession }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [backendOnline, setBackendOnline] = useState(false);
@@ -17,20 +21,53 @@ export default function AdminView({ user, onLogout }: Props) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [currentWallet, setCurrentWallet] = useState(user.walletAddress);
 
-  const handleChangeWallet = async () => {
+  // Wallet change states
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [newWalletAddress, setNewWalletAddress] = useState('');
+  const [walletChangeStep, setWalletChangeStep] = useState<'idle'|'confirming'|'connecting'|'success'>('idle');
+
+  const handleMetaMaskWalletChange = async () => {
     if (typeof window !== 'undefined' && 'ethereum' in window) {
       const win = window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } };
       try {
+        setWalletChangeStep('connecting');
         const accounts = await win.ethereum.request({ method: 'eth_requestAccounts' });
         if (accounts.length > 0) {
-          setCurrentWallet(accounts[0]);
+          const newAddr = accounts[0];
+          setNewWalletAddress(newAddr);
+          setWalletChangeStep('confirming');
+        } else {
+          setWalletChangeStep('idle');
         }
       } catch {
         alert('Gagal menghubungkan MetaMask. Silakan coba lagi.');
+        setWalletChangeStep('idle');
       }
     } else {
       alert('MetaMask tidak terdeteksi! Silakan install ekstensi dompet Web3 di browser Anda.');
     }
+  };
+
+  const handleManualWalletChange = () => {
+    const isEvm = /^0x[a-fA-F0-9]{40}$/.test(newWalletAddress);
+    if (!isEvm) {
+      alert('Alamat dompet tidak valid! Pastikan format alamat EVM 42 karakter (dimulai dengan 0x).');
+      return;
+    }
+    setWalletChangeStep('confirming');
+  };
+
+  const confirmWalletChange = (address: string) => {
+    setCurrentWallet(address);
+    if (onUpdateSession) {
+      onUpdateSession({ ...user, walletAddress: address });
+    }
+    setWalletChangeStep('success');
+    setTimeout(() => {
+      setShowWalletModal(false);
+      setWalletChangeStep('idle');
+      setNewWalletAddress('');
+    }, 1500);
   };
 
   // Local state for mock
@@ -46,8 +83,8 @@ export default function AdminView({ user, onLogout }: Props) {
 
   const refreshData = useCallback(async () => {
     setBackendOnline(await checkBackendOnline());
-    setDashboardData(await getDashboardData(localOrders, localAnomalies, localWithdrawals));
-  }, [localOrders, localAnomalies, localWithdrawals]);
+    setDashboardData(await getDashboardData(localOrders, localAnomalies, localWithdrawals, currentWallet));
+  }, [localOrders, localAnomalies, localWithdrawals, currentWallet]);
 
   useEffect(() => {
     const t = setTimeout(() => { refreshData(); }, 0);
@@ -60,6 +97,12 @@ export default function AdminView({ user, onLogout }: Props) {
   useEffect(() => { if (localWithdrawals.length > 0) localStorage.setItem('stuma_withdrawals_' + user.email, JSON.stringify(localWithdrawals)); }, [localWithdrawals, user.email]);
 
   const handleWithdraw = async () => {
+    if (!currentWallet) {
+      alert('Dompet penerima belum diatur! Silakan hubungkan dompet Anda di tab "Dompet USDT" sebelum menarik dana.');
+      setActiveTab('withdrawals');
+      setShowWalletModal(true);
+      return;
+    }
     try {
       if (backendOnline) {
         const res = await requestWithdrawal(currentWallet);
@@ -488,13 +531,21 @@ export default function AdminView({ user, onLogout }: Props) {
                 <div className="bg-[#2B2D31] border border-[#383A40] p-6 rounded-3xl shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-sm text-grey-muted font-bold uppercase tracking-wider">Informasi Dompet Penerima</h4>
-                    <button onClick={handleChangeWallet} className="text-xs bg-[#7F56FF]/20 text-[#7F56FF] hover:bg-[#7F56FF] hover:text-white px-3 py-1.5 rounded-lg font-bold transition-colors">
-                      Ganti Dompet
+                    <button onClick={() => setShowWalletModal(true)} className="text-xs bg-[#7F56FF]/20 text-[#7F56FF] hover:bg-[#7F56FF] hover:text-white px-3 py-1.5 rounded-lg font-bold transition-colors">
+                      {currentWallet ? 'Ganti Dompet' : 'Hubungkan Dompet'}
                     </button>
                   </div>
-                  <div className="bg-[#111214] border border-[#383A40] p-4 rounded-2xl break-all">
-                    <span className="font-mono text-[#7F56FF] font-bold text-sm">{currentWallet}</span>
-                  </div>
+                  {currentWallet ? (
+                    <div className="bg-[#111214] border border-[#383A40] p-4 rounded-2xl break-all">
+                      <span className="font-mono text-[#7F56FF] font-bold text-sm">{currentWallet}</span>
+                    </div>
+                  ) : (
+                    <div className="bg-[#111214] border border-yellow-500/20 p-4 rounded-2xl flex flex-col items-center justify-center py-6 text-center">
+                      <ShieldAlert size={28} className="text-yellow-500 mb-2 animate-pulse" />
+                      <span className="font-semibold text-yellow-500 text-sm block mb-1">Dompet Belum Terhubung</span>
+                      <span className="text-[11px] text-grey-muted">Hubungkan dompet Anda untuk menarik dana penjualan.</span>
+                    </div>
+                  )}
                   <p className="text-xs text-grey-muted mt-3">Pastikan dompet Anda mendukung jaringan Polygon (POL) atau Arbitrum (ETH) untuk menerima stablecoin USDT.</p>
                 </div>
               </div>
@@ -686,6 +737,148 @@ export default function AdminView({ user, onLogout }: Props) {
               <button className="bg-[#7F56FF] hover:bg-[#6c42f0] text-white py-2.5 px-6 rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(127,86,255,0.3)] transition-all flex items-center gap-2">
                 <ExternalLink size={16} /> Buka Explorer
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wallet Connection / Change Modal */}
+      {showWalletModal && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#2B2D31] border border-[#383A40] max-w-md w-full rounded-3xl p-8 shadow-[0_0_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
+            <button 
+              onClick={() => {
+                setShowWalletModal(false);
+                setWalletChangeStep('idle');
+                setNewWalletAddress('');
+              }} 
+              className="absolute top-5 right-5 p-2 text-grey-muted hover:text-off-white hover:bg-[#383A40] rounded-xl transition-colors z-20"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="relative z-10">
+              {walletChangeStep === 'idle' && (
+                <div className="animate-fadeIn">
+                  <div className="w-16 h-16 rounded-2xl bg-[#7F56FF]/20 text-[#7F56FF] flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(127,86,255,0.3)]">
+                    <RefreshCw size={32} />
+                  </div>
+                  <h3 className="font-title font-bold text-2xl text-off-white text-center mb-2">
+                    {currentWallet ? 'Ganti Dompet' : 'Hubungkan Dompet'}
+                  </h3>
+                  <p className="text-sm text-grey-muted text-center mb-8">
+                    Pilih metode untuk menghubungkan dompet penerima ke akun Merchant Anda.
+                  </p>
+
+                  {/* Current wallet info if exists */}
+                  {currentWallet && (
+                    <div className="bg-[#111214] border border-[#383A40] rounded-2xl p-4 mb-6">
+                      <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-2">Dompet Saat Ini</span>
+                      <p className="font-mono text-xs text-off-white break-all">{currentWallet}</p>
+                    </div>
+                  )}
+
+                  {/* MetaMask */}
+                  <button 
+                    onClick={handleMetaMaskWalletChange}
+                    className="w-full bg-[#111214] border border-[#383A40] hover:border-orange-500/50 text-white py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-3 group mb-4"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Wallet size={16} className="text-orange-400" />
+                    </div>
+                    Hubungkan MetaMask
+                    <ExternalLink size={14} className="text-grey-muted ml-auto" />
+                  </button>
+
+                  {/* Divider */}
+                  <div className="relative flex items-center justify-center my-6">
+                    <span className="absolute bg-[#2B2D31] px-4 text-[10px] uppercase tracking-widest text-grey-muted font-bold z-10">Atau Input Manual</span>
+                    <div className="w-full h-px bg-[#383A40]"></div>
+                  </div>
+
+                  {/* Manual entry */}
+                  <div className="mb-6">
+                    <label className="text-[11px] text-grey-muted font-bold uppercase tracking-widest mb-2 block">Alamat Dompet Baru (EVM)</label>
+                    <input 
+                      type="text" 
+                      value={newWalletAddress}
+                      onChange={(e) => setNewWalletAddress(e.target.value)}
+                      placeholder="0x..."
+                      className="w-full bg-[#111214] border border-[#383A40] text-sm rounded-xl px-4 py-3.5 focus:outline-none focus:border-[#7F56FF] focus:ring-1 focus:ring-[#7F56FF] text-white placeholder:text-[#383A40] transition-all font-mono"
+                    />
+                    <p className="text-[10px] text-grey-muted mt-2">Masukkan alamat dompet EVM (Ethereum/Polygon/Arbitrum) yang valid.</p>
+                  </div>
+
+                  <button 
+                    onClick={handleManualWalletChange}
+                    disabled={!newWalletAddress}
+                    className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${newWalletAddress ? 'bg-[#7F56FF] hover:bg-[#6c42f0] text-white shadow-[0_0_20px_rgba(127,86,255,0.3)] hover:scale-[1.02]' : 'bg-[#383A40] text-grey-muted cursor-not-allowed'}`}
+                  >
+                    <RefreshCw size={18} /> Simpan Alamat Dompet
+                  </button>
+                </div>
+              )}
+
+              {walletChangeStep === 'confirming' && (
+                <div className="animate-fadeIn">
+                  <div className="w-16 h-16 rounded-2xl bg-yellow-500/20 text-yellow-500 flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
+                    <AlertTriangle size={32} />
+                  </div>
+                  <h3 className="font-title font-bold text-2xl text-off-white text-center mb-2">Konfirmasi Dompet</h3>
+                  <p className="text-sm text-grey-muted text-center mb-8">Pastikan alamat dompet baru benar. Hasil withdraw akan dikirim ke alamat ini.</p>
+
+                  <div className="bg-[#111214] border border-[#383A40] rounded-2xl p-5 mb-6 space-y-4">
+                    {currentWallet && (
+                      <div>
+                        <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-1">Dompet Lama</span>
+                        <p className="font-mono text-xs text-red-400 break-all line-through opacity-60">{currentWallet}</p>
+                      </div>
+                    )}
+                    {currentWallet && <div className="w-full h-px bg-[#383A40]"></div>}
+                    <div>
+                      <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-1">Dompet Baru</span>
+                      <p className="font-mono text-xs text-[#80FF56] break-all">{newWalletAddress}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setWalletChangeStep('idle')}
+                      className="flex-1 bg-[#111214] border border-[#383A40] hover:border-[#7F56FF] text-off-white py-3.5 rounded-xl text-sm font-bold transition-all"
+                    >
+                      Batal
+                    </button>
+                    <button 
+                      onClick={() => confirmWalletChange(newWalletAddress)}
+                      className="flex-1 bg-[#7F56FF] hover:bg-[#6c42f0] text-white py-3.5 rounded-xl text-sm font-bold transition-all shadow-[0_0_20px_rgba(127,86,255,0.3)] hover:scale-[1.02]"
+                    >
+                      Ya, Hubungkan
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {walletChangeStep === 'connecting' && (
+                <div className="py-8 flex flex-col items-center animate-fadeIn">
+                  <div className="w-16 h-16 rounded-full border-4 border-orange-500/20 border-t-orange-500 animate-spin mb-6 shadow-[0_0_15px_rgba(255,165,0,0.3)]"></div>
+                  <h3 className="font-title font-bold text-2xl text-off-white mb-2">Menghubungkan MetaMask</h3>
+                  <p className="text-sm text-grey-muted">Silakan konfirmasi koneksi di ekstensi MetaMask Anda...</p>
+                </div>
+              )}
+
+              {walletChangeStep === 'success' && (
+                <div className="py-6 flex flex-col items-center animate-fadeIn">
+                  <div className="w-20 h-20 rounded-full bg-[#80FF56]/20 text-[#80FF56] flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(128,255,86,0.3)]">
+                    <CheckCircle size={40} />
+                  </div>
+                  <h3 className="font-title font-bold text-2xl text-[#80FF56] mb-2">Dompet Terhubung!</h3>
+                  <p className="text-sm text-grey-muted mb-6">Alamat dompet berhasil disimpan di akun Anda.</p>
+                  <div className="bg-[#111214] border border-[#383A40] rounded-2xl p-4 w-full">
+                    <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-2">Dompet Aktif</span>
+                    <p className="font-mono text-xs text-[#80FF56] break-all">{newWalletAddress}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

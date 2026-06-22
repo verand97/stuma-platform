@@ -221,9 +221,12 @@ export async function triggerBlockchainWebhook(data: {
   }
 }
 
-export async function getDashboardData(localOrders: Order[] = [], localAnomalies: AnomalyLog[] = [], localWithdrawals: Withdrawal[] = []): Promise<DashboardData> {
+export async function getDashboardData(localOrders: Order[] = [], localAnomalies: AnomalyLog[] = [], localWithdrawals: Withdrawal[] = [], merchantAddress?: string): Promise<DashboardData> {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/dashboard`);
+    const url = merchantAddress 
+      ? `${BACKEND_URL}/api/dashboard?merchant_address=${encodeURIComponent(merchantAddress)}`
+      : `${BACKEND_URL}/api/dashboard`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error('API dashboard failed');
     return await res.json();
   } catch {

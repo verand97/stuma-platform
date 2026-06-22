@@ -13,40 +13,42 @@ class DashboardController extends Controller
     /**
      * Get analytics statistics for the merchant dashboard.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Merchant address (hardcoded for demo)
-        $merchantAddress = '0x37c8D8Db16a9A1f87B64d6Bc1F4a1c5d809110B6';
+        // Get merchant address from query parameter, fallback to demo address
+        $merchantAddress = $request->input('merchant_address', '0x37c8D8Db16a9A1f87B64d6Bc1F4a1c5d809110B6');
 
-        // Revenue calculations
-        $totalSalesIdr = Order::where('status', '!=', 'pending')->where('status', '!=', 'anomaly')->sum('total_price_idr');
-        $totalSalesUsdt = Order::where('status', '!=', 'pending')->where('status', '!=', 'anomaly')->sum('total_price_usdt');
+        // Revenue calculations - filtered by merchant
+        $totalSalesIdr = Order::where('merchant_address', $merchantAddress)->where('status', '!=', 'pending')->where('status', '!=', 'anomaly')->sum('total_price_idr');
+        $totalSalesUsdt = Order::where('merchant_address', $merchantAddress)->where('status', '!=', 'pending')->where('status', '!=', 'anomaly')->sum('total_price_usdt');
 
-        // Total gas saved
-        $totalGasSaved = Withdrawal::sum('gas_saved_usdt');
+        // Total gas saved - filtered by merchant
+        $totalGasSaved = Withdrawal::where('merchant_address', $merchantAddress)->sum('gas_saved_usdt');
 
-        // Balances
+        // Balances - filtered by merchant
         // Funds currently held in the smart contract (status 'paid' and method 'custody')
         $availableWithdrawalUsdt = Order::where('merchant_address', $merchantAddress)
             ->where('status', 'paid')
             ->where('payment_method', 'custody')
             ->sum('total_price_usdt');
 
-        // Count statuses
+        // Count statuses - filtered by merchant
         $statusCounts = [
-            'pending' => Order::where('status', 'pending')->count(),
-            'paid' => Order::where('status', 'paid')->count(),
-            'withdrawn' => Order::where('status', 'withdrawn')->count(),
-            'anomaly' => Order::where('status', 'anomaly')->count(),
+            'pending' => Order::where('merchant_address', $merchantAddress)->where('status', 'pending')->count(),
+            'paid' => Order::where('merchant_address', $merchantAddress)->where('status', 'paid')->count(),
+            'withdrawn' => Order::where('merchant_address', $merchantAddress)->where('status', 'withdrawn')->count(),
+            'anomaly' => Order::where('merchant_address', $merchantAddress)->where('status', 'anomaly')->count(),
         ];
 
-        // Fetch logs and history
-        $recentOrders = Order::orderBy('created_at', 'desc')->take(6)->get();
-        $recentAnomalies = AnomalyLog::with('order')
+        // Fetch logs and history - filtered by merchant
+        $recentOrders = Order::where('merchant_address', $merchantAddress)->orderBy('created_at', 'desc')->take(6)->get();
+        $recentAnomalies = AnomalyLog::whereHas('order', function ($query) use ($merchantAddress) {
+            $query->where('merchant_address', $merchantAddress);
+        })->with('order')
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
-        $recentWithdrawals = Withdrawal::orderBy('created_at', 'desc')->take(5)->get();
+        $recentWithdrawals = Withdrawal::where('merchant_address', $merchantAddress)->orderBy('created_at', 'desc')->take(5)->get();
 
         $productCount = Product::count();
 
