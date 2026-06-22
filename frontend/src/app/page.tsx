@@ -32,6 +32,19 @@ export default function StumaApp() {
     setAppState('landing');
   };
 
+  const handleUpdateSession = (updatedUser: UserSession) => {
+    setSession(updatedUser);
+    // Persist updated session to local DB
+    if (typeof window !== 'undefined') {
+      const dbRaw = localStorage.getItem('stuma_users_db');
+      if (dbRaw) {
+        const db = JSON.parse(dbRaw);
+        db[updatedUser.email] = updatedUser;
+        localStorage.setItem('stuma_users_db', JSON.stringify(db));
+      }
+    }
+  };
+
   // 1. Landing Page
   if (appState === 'landing') {
     return <LandingPage onNavigateToAuth={handleNavigateToAuth} />;
@@ -45,7 +58,7 @@ export default function StumaApp() {
   // 3. Authenticated Views
   switch (session.role) {
     case 'pelanggan':
-      return <CustomerView user={session} onLogout={handleLogout} />;
+      return <CustomerView user={session} onLogout={handleLogout} onUpdateSession={handleUpdateSession} />;
     case 'admin':
       return <AdminView user={session} onLogout={handleLogout} />;
     case 'superadmin':

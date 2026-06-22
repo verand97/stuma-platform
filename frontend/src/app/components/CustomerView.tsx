@@ -1,15 +1,27 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Wallet, ShoppingBag, CheckCircle, Trash2, X, Info, ShieldAlert, History, Package, LogOut } from 'lucide-react';
+import { Wallet, ShoppingBag, CheckCircle, Trash2, X, Info, ShieldAlert, History, Package, LogOut, RefreshCw, Copy, Check, ExternalLink, AlertTriangle } from 'lucide-react';
 import { UserSession } from '../../utils/types';
 import { getProducts, createOrder, triggerBlockchainWebhook, Product, Order } from '../../utils/api';
 
-interface Props { user: UserSession; onLogout: () => void; }
+interface Props { user: UserSession; onLogout: () => void; onUpdateSession: (user: UserSession) => void; }
 
-export default function CustomerView({ user, onLogout }: Props) {
+export default function CustomerView({ user, onLogout, onUpdateSession }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
-  const [activeTab, setActiveTab] = useState<'shop'|'orders'>('shop');
+  const [activeTab, setActiveTab] = useState<'shop'|'orders'|'wallet'>('shop');
+  // Wallet change states
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [newWalletAddress, setNewWalletAddress] = useState('');
+  const [walletChangeStep, setWalletChangeStep] = useState<'idle'|'confirming'|'connecting'|'success'>('idle');
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const [walletHistory, setWalletHistory] = useState<{address: string; changedAt: string; method: string}[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('stuma_wallet_history_' + user.email);
+      return saved ? JSON.parse(saved) : [{ address: user.walletAddress, changedAt: new Date().toISOString(), method: 'Pendaftaran Awal' }];
+    }
+    return [{ address: user.walletAddress, changedAt: new Date().toISOString(), method: 'Pendaftaran Awal' }];
+  });
   const [selectedNetwork, setSelectedNetwork] = useState<'polygon'|'arbitrum'>('polygon');
   const [paymentMethod, setPaymentMethod] = useState<'custody'|'direct'>('custody');
   const [walletUsdtBalance, setWalletUsdtBalance] = useState(50.00);
@@ -20,7 +32,7 @@ export default function CustomerView({ user, onLogout }: Props) {
   const [, setUsdtRate] = useState(16400);
   const [txHash, setTxHash] = useState('');
   const [myOrders, setMyOrders] = useState<Order[]>(() => {
-    if (typeof window !== 'undefined') { const s = localStorage.getItem('stuma_customer_orders'); return s ? JSON.parse(s) : []; }
+    if (typeof window !== 'undefined') { const s = localStorage.getItem('stuma_customer_orders_' + user.email); return s ? JSON.parse(s) : []; }
     return [];
   });
 
@@ -29,7 +41,63 @@ export default function CustomerView({ user, onLogout }: Props) {
     const t = setTimeout(() => { refreshProducts(); }, 0);
     return () => clearTimeout(t);
   }, [refreshProducts]);
-  useEffect(() => { if (myOrders.length > 0) localStorage.setItem('stuma_customer_orders', JSON.stringify(myOrders)); }, [myOrders]);
+  useEffect(() => { if (myOrders.length > 0) localStorage.setItem('stuma_customer_orders_' + user.email, JSON.stringify(myOrders)); }, [myOrders, user.email]);
+  useEffect(() => { localStorage.setItem('stuma_wallet_history_' + user.email, JSON.stringify(walletHistory)); }, [walletHistory, user.email]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedAddress(true);
+    setTimeout(() => setCopiedAddress(false), 2000);
+  };
+
+  const handleManualWalletChange = () => {
+    if (!newWalletAddress || !/^0x[a-fA-F0-9]{40}$/.test(newWalletAddress)) {
+      alert('Format alamat dompet tidak valid. Harus berformat 0x... dengan 42 karakter.');
+      return;
+    }
+    if (newWalletAddress.toLowerCase() === user.walletAddress.toLowerCase()) {
+      alert('Alamat ini sama dengan dompet Anda saat ini.');
+      return;
+    }
+    setWalletChangeStep('confirming');
+  };
+
+  const confirmWalletChange = (address: string, method: string) => {
+    const updatedUser: UserSession = { ...user, walletAddress: address };
+    const newHistoryEntry = { address, changedAt: new Date().toISOString(), method };
+    setWalletHistory(prev => [newHistoryEntry, ...prev]);
+    onUpdateSession(updatedUser);
+    setWalletChangeStep('success');
+    setNewWalletAddress('');
+    setTimeout(() => {
+      setWalletChangeStep('idle');
+      setShowWalletModal(false);
+    }, 2500);
+  };
+
+  const handleMetaMaskWalletChange = async () => {
+    if (typeof window !== 'undefined' && 'ethereum' in window) {
+      const win = window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } };
+      setWalletChangeStep('connecting');
+      try {
+        const accounts = await win.ethereum.request({ method: 'eth_requestAccounts' });
+        if (accounts.length > 0) {
+          const walletAddress = accounts[0];
+          if (walletAddress.toLowerCase() === user.walletAddress.toLowerCase()) {
+            alert('Dompet MetaMask ini sama dengan dompet Anda saat ini.');
+            setWalletChangeStep('idle');
+            return;
+          }
+          confirmWalletChange(walletAddress, 'MetaMask');
+        }
+      } catch {
+        alert('Gagal menghubungkan MetaMask. Silakan coba lagi.');
+        setWalletChangeStep('idle');
+      }
+    } else {
+      alert('MetaMask tidak terdeteksi! Silakan install ekstensi dompet Web3.');
+    }
+  };
 
   const addToCart = (p: Product) => {
     const ex = cart.find(i => i.product.id === p.id);
@@ -110,7 +178,7 @@ export default function CustomerView({ user, onLogout }: Props) {
         </div>
         {/* Sub nav */}
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex gap-2">
-          {[{ id: 'shop' as const, label: 'Katalog Belanja', icon: <ShoppingBag size={16}/> }, { id: 'orders' as const, label: 'Pesanan Saya', icon: <History size={16}/> }].map(t => (
+          {[{ id: 'shop' as const, label: 'Katalog Belanja', icon: <ShoppingBag size={16}/> }, { id: 'orders' as const, label: 'Pesanan Saya', icon: <History size={16}/> }, { id: 'wallet' as const, label: 'Dompet Saya', icon: <Wallet size={16}/> }].map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)} className={`flex items-center gap-2 py-3 px-6 rounded-t-xl text-sm font-bold transition-all ${activeTab === t.id ? 'bg-[#1E1F22] text-[#7F56FF] border-t-2 border-t-[#7F56FF] border-l border-r border-[#383A40]' : 'text-grey-muted hover:text-off-white bg-transparent'}`}>
               {t.icon}<span>{t.label}</span>
               {t.id === 'orders' && myOrders.length > 0 && <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${activeTab === t.id ? 'bg-[#7F56FF] text-white' : 'bg-[#383A40] text-off-white'}`}>{myOrders.length}</span>}
@@ -122,7 +190,132 @@ export default function CustomerView({ user, onLogout }: Props) {
       <main className="grow max-w-7xl mx-auto px-4 md:px-8 py-10 w-full relative">
         <div className="absolute top-10 left-10 w-[400px] h-[400px] bg-[#7F56FF]/5 rounded-full blur-[100px] pointer-events-none"></div>
 
-        {activeTab === 'shop' ? (
+        {activeTab === 'wallet' ? (
+          /* Wallet Management Tab */
+          <div className="relative z-10 max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="font-title text-3xl font-bold text-off-white mb-2">Dompet Saya</h2>
+                <p className="text-sm text-grey-muted">Kelola alamat dompet kripto untuk transaksi USDT di STUMA.</p>
+              </div>
+            </div>
+
+            {/* Current Wallet Card */}
+            <div className="bg-[#2B2D31] border border-[#383A40] rounded-3xl p-8 mb-6 relative overflow-hidden group hover:border-[#7F56FF]/50 transition-colors">
+              <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-[#7F56FF]/5 rounded-full blur-[80px] pointer-events-none"></div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-[#7F56FF]/20 text-[#7F56FF] flex items-center justify-center shadow-[0_0_20px_rgba(127,86,255,0.2)]">
+                    <Wallet size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-title font-bold text-lg text-off-white">Dompet Aktif</h3>
+                    <p className="text-xs text-grey-muted">Alamat dompet yang terhubung ke akun Anda</p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 bg-[#80FF56]/10 text-[#80FF56] text-[10px] font-extrabold uppercase px-3 py-1.5 rounded-full border border-[#80FF56]/20">
+                      <span className="w-2 h-2 rounded-full bg-[#80FF56] animate-pulse"></span>
+                      Terhubung
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="bg-[#111214] border border-[#383A40] rounded-2xl p-5 mb-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-2">Alamat Wallet (EVM)</span>
+                      <p className="font-mono text-sm text-off-white break-all leading-relaxed">{user.walletAddress}</p>
+                    </div>
+                    <button 
+                      onClick={() => copyToClipboard(user.walletAddress)}
+                      className="shrink-0 p-3 rounded-xl bg-[#2B2D31] border border-[#383A40] hover:border-[#7F56FF] text-grey-muted hover:text-[#7F56FF] transition-all hover:scale-105"
+                      title="Salin alamat"
+                    >
+                      {copiedAddress ? <Check size={18} className="text-[#80FF56]" /> : <Copy size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-[#111214] border border-[#383A40] rounded-xl p-4">
+                    <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-1">Saldo USDT</span>
+                    <span className="font-mono font-extrabold text-lg text-[#80FF56]">{walletUsdtBalance.toFixed(2)}</span>
+                  </div>
+                  <div className="bg-[#111214] border border-[#383A40] rounded-xl p-4">
+                    <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-1">{selectedNetwork === 'polygon' ? 'POL' : 'ETH'} Balance</span>
+                    <span className="font-mono font-extrabold text-lg text-[#7F56FF]">{walletNativeBalance.toFixed(4)}</span>
+                  </div>
+                  <div className="bg-[#111214] border border-[#383A40] rounded-xl p-4">
+                    <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-1">Jaringan</span>
+                    <span className="font-bold text-off-white uppercase text-sm">{selectedNetwork}</span>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => { setShowWalletModal(true); setWalletChangeStep('idle'); setNewWalletAddress(''); }}
+                  className="w-full sm:w-auto bg-[#7F56FF] hover:bg-[#6c42f0] text-white py-3.5 px-8 rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(127,86,255,0.3)] hover:shadow-[0_0_30px_rgba(127,86,255,0.5)] hover:scale-[1.02] flex items-center justify-center gap-2"
+                >
+                  <RefreshCw size={18} /> Ganti Dompet
+                </button>
+              </div>
+            </div>
+
+            {/* Warning Card */}
+            <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-5 mb-6 flex items-start gap-4">
+              <AlertTriangle size={20} className="text-yellow-500 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-bold text-yellow-500 mb-1">Peringatan Keamanan</h4>
+                <p className="text-xs text-grey-muted leading-relaxed">
+                  Mengganti alamat dompet akan mengarahkan semua transaksi masa depan ke alamat baru. Pastikan Anda memiliki akses penuh ke dompet baru sebelum mengganti. Transaksi lama yang sudah selesai tidak akan terpengaruh.
+                </p>
+              </div>
+            </div>
+
+            {/* Wallet History */}
+            <div className="bg-[#2B2D31] border border-[#383A40] rounded-3xl p-8">
+              <h3 className="font-title font-bold text-lg text-off-white mb-6 flex items-center gap-2">
+                <History size={20} className="text-[#7F56FF]" />
+                Riwayat Perubahan Dompet
+              </h3>
+              {walletHistory.length === 0 ? (
+                <div className="py-12 text-center">
+                  <History size={40} className="text-[#383A40] mx-auto mb-4" />
+                  <p className="text-grey-muted text-sm">Belum ada riwayat perubahan dompet.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {walletHistory.map((entry, idx) => (
+                    <div key={idx} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#111214] border rounded-2xl p-5 transition-colors ${idx === 0 ? 'border-[#7F56FF]/30' : 'border-[#383A40]'}`}>
+                      <div className="flex items-start gap-4 min-w-0">
+                        <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${idx === 0 ? 'bg-[#7F56FF]/20 text-[#7F56FF]' : 'bg-[#383A40]/30 text-grey-muted'}`}>
+                          <Wallet size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-mono text-xs text-off-white truncate max-w-[280px]">{entry.address}</p>
+                            {idx === 0 && <span className="text-[9px] font-extrabold uppercase bg-[#7F56FF]/20 text-[#7F56FF] px-2 py-0.5 rounded-full border border-[#7F56FF]/30">Aktif</span>}
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] text-grey-muted">
+                            <span className="font-medium">{entry.method}</span>
+                            <span className="w-1 h-1 rounded-full bg-[#383A40]"></span>
+                            <span>{new Date(entry.changedAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => copyToClipboard(entry.address)}
+                        className="shrink-0 p-2 rounded-lg text-grey-muted hover:text-[#7F56FF] hover:bg-[#7F56FF]/10 transition-colors"
+                        title="Salin alamat"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeTab === 'shop' ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
             {/* Products */}
             <div className="lg:col-span-8">
@@ -260,6 +453,137 @@ export default function CustomerView({ user, onLogout }: Props) {
           </div>
         )}
       </main>
+
+      {/* Change Wallet Modal */}
+      {showWalletModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#111214]/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#2B2D31] border border-[#383A40] max-w-lg w-full rounded-3xl p-8 shadow-[0_0_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
+            
+            {/* Modal bg glow */}
+            <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[100px] pointer-events-none ${walletChangeStep === 'success' ? 'bg-[#80FF56]/10' : 'bg-[#7F56FF]/10'}`}></div>
+            
+            <button onClick={() => { setShowWalletModal(false); setWalletChangeStep('idle'); }} className="absolute top-5 right-5 p-2 text-grey-muted hover:text-off-white hover:bg-[#383A40] rounded-xl transition-colors z-20">
+              <X size={20} />
+            </button>
+
+            <div className="relative z-10">
+              {walletChangeStep === 'idle' && (
+                <div className="animate-fadeIn">
+                  <div className="w-16 h-16 rounded-2xl bg-[#7F56FF]/20 text-[#7F56FF] flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(127,86,255,0.3)]">
+                    <RefreshCw size={32} />
+                  </div>
+                  <h3 className="font-title font-bold text-2xl text-off-white text-center mb-2">Ganti Dompet</h3>
+                  <p className="text-sm text-grey-muted text-center mb-8">Pilih metode untuk menghubungkan dompet baru ke akun STUMA Anda.</p>
+
+                  {/* Current wallet info */}
+                  <div className="bg-[#111214] border border-[#383A40] rounded-2xl p-4 mb-6">
+                    <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-2">Dompet Saat Ini</span>
+                    <p className="font-mono text-xs text-off-white break-all">{user.walletAddress}</p>
+                  </div>
+
+                  {/* Method 1: MetaMask */}
+                  <button 
+                    onClick={handleMetaMaskWalletChange}
+                    className="w-full bg-[#111214] border border-[#383A40] hover:border-orange-500/50 text-white py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-3 group mb-4"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Wallet size={16} className="text-orange-400" />
+                    </div>
+                    Hubungkan MetaMask
+                    <ExternalLink size={14} className="text-grey-muted ml-auto" />
+                  </button>
+
+                  {/* Divider */}
+                  <div className="relative flex items-center justify-center my-6">
+                    <span className="absolute bg-[#2B2D31] px-4 text-[10px] uppercase tracking-widest text-grey-muted font-bold z-10">Atau Input Manual</span>
+                    <div className="w-full h-px bg-[#383A40]"></div>
+                  </div>
+
+                  {/* Method 2: Manual entry */}
+                  <div className="mb-6">
+                    <label className="text-[11px] text-grey-muted font-bold uppercase tracking-widest mb-2 block">Alamat Dompet Baru (EVM)</label>
+                    <input 
+                      type="text" 
+                      value={newWalletAddress}
+                      onChange={(e) => setNewWalletAddress(e.target.value)}
+                      placeholder="0x..."
+                      className="w-full bg-[#111214] border border-[#383A40] text-sm rounded-xl px-4 py-3.5 focus:outline-none focus:border-[#7F56FF] focus:ring-1 focus:ring-[#7F56FF] text-white placeholder:text-[#383A40] transition-all font-mono"
+                    />
+                    <p className="text-[10px] text-grey-muted mt-2">Masukkan alamat dompet EVM (Ethereum/Polygon/Arbitrum) yang valid.</p>
+                  </div>
+
+                  <button 
+                    onClick={handleManualWalletChange}
+                    disabled={!newWalletAddress}
+                    className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${newWalletAddress ? 'bg-[#7F56FF] hover:bg-[#6c42f0] text-white shadow-[0_0_20px_rgba(127,86,255,0.3)] hover:scale-[1.02]' : 'bg-[#383A40] text-grey-muted cursor-not-allowed'}`}
+                  >
+                    <RefreshCw size={18} /> Lanjutkan Ganti Dompet
+                  </button>
+                </div>
+              )}
+
+              {walletChangeStep === 'confirming' && (
+                <div className="animate-fadeIn">
+                  <div className="w-16 h-16 rounded-2xl bg-yellow-500/20 text-yellow-500 flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
+                    <AlertTriangle size={32} />
+                  </div>
+                  <h3 className="font-title font-bold text-2xl text-off-white text-center mb-2">Konfirmasi Pergantian</h3>
+                  <p className="text-sm text-grey-muted text-center mb-8">Pastikan alamat dompet baru benar. Aksi ini tidak dapat dibatalkan.</p>
+
+                  <div className="bg-[#111214] border border-[#383A40] rounded-2xl p-5 mb-6 space-y-4">
+                    <div>
+                      <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-1">Dompet Lama</span>
+                      <p className="font-mono text-xs text-red-400 break-all line-through opacity-60">{user.walletAddress}</p>
+                    </div>
+                    <div className="w-full h-px bg-[#383A40]"></div>
+                    <div>
+                      <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-1">Dompet Baru</span>
+                      <p className="font-mono text-xs text-[#80FF56] break-all">{newWalletAddress}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setWalletChangeStep('idle')}
+                      className="flex-1 bg-[#111214] border border-[#383A40] hover:border-[#7F56FF] text-off-white py-3.5 rounded-xl text-sm font-bold transition-all"
+                    >
+                      Batal
+                    </button>
+                    <button 
+                      onClick={() => confirmWalletChange(newWalletAddress, 'Input Manual')}
+                      className="flex-1 bg-[#7F56FF] hover:bg-[#6c42f0] text-white py-3.5 rounded-xl text-sm font-bold transition-all shadow-[0_0_20px_rgba(127,86,255,0.3)] hover:scale-[1.02]"
+                    >
+                      Ya, Ganti Sekarang
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {walletChangeStep === 'connecting' && (
+                <div className="py-8 flex flex-col items-center animate-fadeIn">
+                  <div className="w-16 h-16 rounded-full border-4 border-orange-500/20 border-t-orange-500 animate-spin mb-6 shadow-[0_0_15px_rgba(255,165,0,0.3)]"></div>
+                  <h3 className="font-title font-bold text-2xl text-off-white mb-2">Menghubungkan MetaMask</h3>
+                  <p className="text-sm text-grey-muted">Silakan konfirmasi koneksi di ekstensi MetaMask Anda...</p>
+                </div>
+              )}
+
+              {walletChangeStep === 'success' && (
+                <div className="py-6 flex flex-col items-center animate-fadeIn">
+                  <div className="w-20 h-20 rounded-full bg-[#80FF56]/20 text-[#80FF56] flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(128,255,86,0.3)]">
+                    <CheckCircle size={40} />
+                  </div>
+                  <h3 className="font-title font-bold text-2xl text-[#80FF56] mb-2">Dompet Berhasil Diganti!</h3>
+                  <p className="text-sm text-grey-muted mb-6">Alamat dompet baru telah terhubung ke akun Anda.</p>
+                  <div className="bg-[#111214] border border-[#383A40] rounded-2xl p-4 w-full">
+                    <span className="text-[10px] text-grey-muted font-bold uppercase tracking-wider block mb-2">Dompet Baru Aktif</span>
+                    <p className="font-mono text-xs text-[#80FF56] break-all">{user.walletAddress}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Checkout Modal */}
       {checkoutStep !== 'idle' && checkoutOrder && (

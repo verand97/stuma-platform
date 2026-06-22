@@ -35,13 +35,13 @@ export default function AdminView({ user, onLogout }: Props) {
 
   // Local state for mock
   const [localOrders, setLocalOrders] = useState<Order[]>(() => {
-    if (typeof window !== 'undefined') { const s = localStorage.getItem('stuma_orders'); return s ? JSON.parse(s) : []; } return [];
+    if (typeof window !== 'undefined') { const s = localStorage.getItem('stuma_orders_' + user.email); return s ? JSON.parse(s) : []; } return [];
   });
   const [localAnomalies, setLocalAnomalies] = useState<AnomalyLog[]>(() => {
-    if (typeof window !== 'undefined') { const s = localStorage.getItem('stuma_anomalies'); return s ? JSON.parse(s) : []; } return [];
+    if (typeof window !== 'undefined') { const s = localStorage.getItem('stuma_anomalies_' + user.email); return s ? JSON.parse(s) : []; } return [];
   });
   const [localWithdrawals, setLocalWithdrawals] = useState<Withdrawal[]>(() => {
-    if (typeof window !== 'undefined') { const s = localStorage.getItem('stuma_withdrawals'); return s ? JSON.parse(s) : []; } return [];
+    if (typeof window !== 'undefined') { const s = localStorage.getItem('stuma_withdrawals_' + user.email); return s ? JSON.parse(s) : []; } return [];
   });
 
   const refreshData = useCallback(async () => {
@@ -55,9 +55,9 @@ export default function AdminView({ user, onLogout }: Props) {
   }, [refreshData]);
 
   // Sync state updates with localStorage for offline mock
-  useEffect(() => { if (localOrders.length > 0) localStorage.setItem('stuma_orders', JSON.stringify(localOrders)); }, [localOrders]);
-  useEffect(() => { if (localAnomalies.length > 0) localStorage.setItem('stuma_anomalies', JSON.stringify(localAnomalies)); }, [localAnomalies]);
-  useEffect(() => { if (localWithdrawals.length > 0) localStorage.setItem('stuma_withdrawals', JSON.stringify(localWithdrawals)); }, [localWithdrawals]);
+  useEffect(() => { if (localOrders.length > 0) localStorage.setItem('stuma_orders_' + user.email, JSON.stringify(localOrders)); }, [localOrders, user.email]);
+  useEffect(() => { if (localAnomalies.length > 0) localStorage.setItem('stuma_anomalies_' + user.email, JSON.stringify(localAnomalies)); }, [localAnomalies, user.email]);
+  useEffect(() => { if (localWithdrawals.length > 0) localStorage.setItem('stuma_withdrawals_' + user.email, JSON.stringify(localWithdrawals)); }, [localWithdrawals, user.email]);
 
   const handleWithdraw = async () => {
     try {
